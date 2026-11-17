@@ -1,0 +1,20 @@
+const express = require('express');
+const cors = require('cors');
+const helmet = require('helmet');
+const morgan = require('morgan');
+const rateLimit = require('express-rate-limit');
+const config = require('./config');
+const rzp = require('./config/razorpay');
+const { notFound, errorHandler } = require('./middleware/error');
+
+const app = express();
+app.use(helmet());
+app.use(cors({ origin: config.clientUrl, credentials: true }));
+app.use(express.json({ limit: '1mb' }));
+if (process.env.NODE_ENV !== 'test') app.use(morgan('dev'));
+app.use('/api/auth/login', rateLimit({ windowMs: 15 * 60 * 1000, max: 30, message: { message: 'Too many attempts. Try again in a few minutes.' } }));
+app.get('/api/health', (req, res) => res.json({ ok: true, paymentMode: rzp.enabled ? 'razorpay' : 'demo' }));
+app.use('/api', require('./routes'));
+app.use(notFound);
+app.use(errorHandler);
+module.exports = app;
